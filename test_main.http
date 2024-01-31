@@ -1,0 +1,39 @@
+# Test your FastAPI endpoints
+
+GET http://127.0.0.1:8000/
+Accept: application/json
+
+###
+
+GET http://127.0.0.1:8000/hello/vitor
+Accept: application/json
+
+###
+
+GET http://127.0.0.1:8000/login/86028790672
+Accept: application/json
+content-type: application/json
+
+###
+
+GET http://127.0.0.1:8000/connect
+Accept: application/json
+content-type: application/json
+
+###
+
+GET http://127.0.0.1:8000/open-billings/07282278000148
+Accept: application/json
+content-type: application/json
+
+###
+
+GET http://127.0.0.1:8000/paid-billings/07282278000148
+Accept: application/json
+content-type: application/json
+
+###
+
+GET http://127.0.0.1:8000/user-info/86028790672
+Accept: application/json
+content-type: application/json
