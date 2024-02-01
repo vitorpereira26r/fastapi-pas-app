@@ -2,7 +2,7 @@ from urllib import response
 
 from fastapi import FastAPI
 from sqlalchemy import MetaData, Table, Column, Integer, String, select, ForeignKey, Float, DateTime, and_, or_
-from models import User, UserInfo, OpenBilling, PaidBilling
+from models import User, UserInfo, OpenBilling, PaidBilling, PhoneLine
 import databases
 import os
 
@@ -77,6 +77,7 @@ terminal_acesso = Table(
     Column("id_terminal", Integer, primary_key=True),
     Column("id_usuario", Integer, ForeignKey("usuario.id_usuario")),
     Column("id_operadora", Integer),
+    Column("id_plano_coop", Integer)
 )
 
 linha_endereco = Table(
@@ -96,6 +97,13 @@ tb_perfil = Table(
     metadata,
     Column("id_perfil", Integer, primary_key=True),
     Column("perfil", String),
+)
+
+tb_operadora = Table(
+    "operadora",
+    metadata,
+    Column("operadora", String),
+    Column("id_operadora", Integer)
 )
 
 app = FastAPI()
@@ -122,7 +130,9 @@ async def connect():
 
 @app.get("/login/{cpf}")
 async def login(cpf: str):
-    await database.connect()
+    if not database.is_connected:
+        await database.connect()
+        print("Database connection established")
     print(cpf)
     query = select(
         users.c.cpf,
@@ -152,7 +162,9 @@ async def login(cpf: str):
 
 @app.get("/open-billings/{cpf}")
 async def open_billings(cpf: str):
-    await database.connect()
+    if not database.is_connected:
+        await database.connect()
+        print("Database connection established")
     print(cpf)
 
     query = (
@@ -197,8 +209,10 @@ async def open_billings(cpf: str):
 
 
 @app.get("/paid-billings/{cpf}")
-async def get_paid_billings(cpf: str):
-    await database.connect()
+async def get_paid_billings(cpf):
+    if not database.is_connected:
+        await database.connect()
+        print("Database connection established")
     print(cpf)
 
     query = (
@@ -249,7 +263,9 @@ async def get_paid_billings(cpf: str):
 
 @app.get("/user-info/{user_id}")
 async def get_terminal_info(user_id: int):
-    await database.connect()
+    if not database.is_connected:
+        await database.connect()
+        print("Database connection established")
 
     query = (
         select(
@@ -286,3 +302,39 @@ async def get_terminal_info(user_id: int):
     )
 
     return user_info
+
+
+@app.get("/user-phones/{cpf}")
+async def user_phones(cpf):
+    if not database.is_connected:
+        await database.connect()
+        print("Database connection established")
+
+    query = (
+        select(
+            terminal_acesso.c.id_terminal,
+            tb_operadora.c.id_operadora,
+            tb_operadora.c.operadora
+        )
+        .where(
+            and_(
+                terminal_acesso.c.id_usuario == cpf,
+                terminal_acesso.c.id_operadora == tb_operadora.c.id_operadora,
+                terminal_acesso.c.id_plano_coop != 0
+            )
+        )
+        .order_by(tb_operadora.c.operadora, terminal_acesso.c.id_terminal)
+    )
+
+    result = await database.fetch_all(query)
+
+    user_phones = []
+
+    for r in result:
+        phone = PhoneLine(r[0], r[1], r[2])
+
+        user_phones.append(phone)
+
+    return user_phones
+
+

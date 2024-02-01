@@ -37,3 +37,10 @@ class OpenBilling:
         self.status = status
         self.code = code
         self.value = value
+
+
+class PhoneLine:
+    def __init__(self, idTerminal, idOperator, operator):
+        self.idTerminal = idTerminal
+        self.idOperator = idOperator
+        self.operator = operator
