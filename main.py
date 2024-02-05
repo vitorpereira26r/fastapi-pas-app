@@ -1,7 +1,6 @@
 from urllib import response
 
 from fastapi import FastAPI
-from sqlalchemy import MetaData, Table, Column, Integer, String, select, ForeignKey, Float, DateTime, and_, or_
 from models import User, UserInfo, OpenBilling, PaidBilling, PhoneLine, PhoneServices, Service
 import databases
 import os
@@ -12,116 +11,16 @@ DB_NAME = os.environ.get("DB_NAME", "aptoubat_teleconta")
 DB_USER = os.environ.get("DB_USER", "aptoubat")
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "River@2304")
 
+'''
+DB2_HOST = os.environ.get("DB2_HOST", "http://mysql.pasvoluntariado.com.br/")
+DB2_PORT = os.environ.get("DB2_PORT", "3306")
+DB2_NAME = os.environ.get("DB2_NAME", "aptoubat_teleconta")
+DB2_USER = os.environ.get("DB2_USER", "pasvoluntariad")
+DB2_PASSWORD = os.environ.get("DB2_PASSWORD", "NjGGOt0lCTl0QzXZ6dSs")'''
+
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 database = databases.Database(DATABASE_URL)
-metadata = MetaData()
-
-
-users = Table(
-    "usuario",
-    metadata,
-    Column("id_empresa", Integer),
-    Column("usuario", String(50)),
-    Column("nome_usuario", String(50)),
-    Column("nick", String(50)),
-    Column("senha", String(50)),
-    Column("ind_ativo", String(3)),
-    Column("cpf", String(11)),
-    Column("id_usuario", Integer, primary_key=True),
-    Column("perfil_usuario", Integer),
-)
-
-company = Table(
-    "empresa",
-    metadata,
-    Column("id_empresa", Integer),
-    Column("razao_social", String(50)),
-)
-
-title_to_recieve = Table(
-    "79_titulos_a_receber",
-    metadata,
-    Column("nosso_numero", String),
-    Column("id_terminal", String),
-    Column("data_venc", DateTime),
-    Column("vlrreceber", Float),
-    Column("status", String),
-    Column("id_usuario", String),
-    Column("referencia", String),
-    Column("seunumero", String),
-)
-
-bill_to_recieve = Table(
-    "79_conta_receber",
-    metadata,
-    Column("linha_digitavel_cod_barras", String),
-    Column("nosso_numero", String),
-    Column("id_terminal", String),
-    Column("referencia", String),
-    Column("data_venc", DateTime),
-    Column("id_usuario", String),
-    Column("ind_liberacao", String),
-    Column("valor_conta", Float),
-    Column("status", String),
-    Column("data_quit", DateTime),
-    Column("valor_quitado", Float),
-    Column("valor_juros", Float),
-    Column("seunumero", String),
-)
-
-
-terminal_acesso = Table(
-    "79_terminal_acesso",
-    metadata,
-    Column("id_terminal", Integer, primary_key=True),
-    Column("id_usuario", Integer, ForeignKey("usuario.id_usuario")),
-    Column("id_operadora", Integer),
-    Column("id_plano_coop", Integer)
-)
-
-linha_endereco = Table(
-    "linha_endereco",
-    metadata,
-    Column("id_operadora", Integer),
-    Column("id_terminal", Integer),
-    Column("logradouro", String),
-    Column("bairro", String),
-    Column("cidade", String),
-    Column("uf", String),
-    Column("cep", String),
-)
-
-tb_perfil = Table(
-    "tb_perfil",
-    metadata,
-    Column("id_perfil", Integer, primary_key=True),
-    Column("perfil", String),
-)
-
-tb_operadora = Table(
-    "operadora",
-    metadata,
-    Column("operadora", String),
-    Column("id_operadora", Integer)
-)
-
-total_terminal_access = Table(
-    "79_total_terminal_acesso",
-    metadata,
-    Column("referencia", String),
-    Column("id_terminal", String),
-    Column("fatura", String),
-)
-
-bill_fature = Table(
-    "79_fatura_conta",
-    metadata,
-    Column("id_operadora", String),
-    Column("referencia", String),
-    Column("id_operadora", String),
-    Column("ind_liberacao", String)
-)
 
 app = FastAPI()
 
@@ -150,25 +49,19 @@ async def login(cpf: str):
     if not database.is_connected:
         await database.connect()
         print("Database connection established")
-    print(cpf)
-    query = select(
-        users.c.cpf,
-        users.c.usuario,
-        users.c.nome_usuario,
-        users.c.senha,
-        users.c.nick,
-        company.c.razao_social
-    ).where(
-        (users.c.id_empresa == company.c.id_empresa)
-        & (users.c.ind_ativo == "SIM")
-        & (users.c.cpf == cpf)
-    )
 
-    result = await database.fetch_one(query)
+    query = '''
+        select u.id_empresa,u.usuario,u.nome_usuario,u.nick,u.senha, e.razao_social, u.cpf
+        from usuario u,empresa e
+        where u.id_empresa = e.id_empresa and
+        u.ind_ativo = 'SIM' and cpf = :cpf;
+    '''
+
+    result = await database.fetch_one(query, values={"cpf": cpf})
 
     user = User(
-        cpf=result[0],
-        id=result[0],
+        cpf=result[6],
+        id=result[6],
         name=result[2],
         nick=result[4],
         username=result[1]
@@ -184,29 +77,16 @@ async def open_billings(cpf: str):
         print("Database connection established")
     print(cpf)
 
-    query = (
-        select(
-            title_to_recieve.c.nosso_numero,
-            title_to_recieve.c.id_terminal,
-            title_to_recieve.c.data_venc,
-            title_to_recieve.c.vlrreceber,
-            title_to_recieve.c.status,
-            bill_to_recieve.c.linha_digitavel_cod_barras,
-        )
-        .where(
-            and_(
-                title_to_recieve.c.id_usuario == cpf,
-                title_to_recieve.c.nosso_numero != 0,
-                title_to_recieve.c.nosso_numero == bill_to_recieve.c.nosso_numero,
-                title_to_recieve.c.referencia == bill_to_recieve.c.referencia,
-                title_to_recieve.c.id_usuario == bill_to_recieve.c.id_usuario,
-                bill_to_recieve.c.ind_liberacao == 'S',
-            )
-        )
-        .order_by(title_to_recieve.c.seunumero.desc(), title_to_recieve.c.id_terminal)
-    )
+    query = '''
+        select vw.nosso_numero,vw.id_terminal,vw.data_venc,vw.vlrreceber,vw.status,cr.linha_digitavel_cod_barras
+        from 79_titulos_a_receber vw, 79_conta_receber cr
+        where vw.id_usuario = :cpf  and vw.nosso_numero <> 0 and
+        vw.nosso_numero = cr.nosso_numero and vw.referencia = cr.referencia and
+        vw.id_usuario = cr.id_usuario and cr.ind_liberacao = 'S'
+        order by vw.seunumero desc,vw.id_terminal
+    '''
 
-    result = await database.fetch_all(query)
+    result = await database.fetch_all(query, values={"cpf": cpf})
 
     billings = []
 
@@ -232,32 +112,14 @@ async def get_paid_billings(cpf):
         print("Database connection established")
     print(cpf)
 
-    query = (
-        select(
-            bill_to_recieve.c.nosso_numero,
-            bill_to_recieve.c.id_terminal,
-            bill_to_recieve.c.data_venc,
-            bill_to_recieve.c.valor_conta,
-            bill_to_recieve.c.status,
-            bill_to_recieve.c.data_quit,
-            bill_to_recieve.c.valor_quitado,
-            bill_to_recieve.c.valor_juros,
-        )
-        .where(
-            and_(
-                bill_to_recieve.c.id_usuario == cpf,
-                or_(
-                    bill_to_recieve.c.valor_quitado > 0,
-                    bill_to_recieve.c.valor_quitado < 0,
-                    bill_to_recieve.c.data_quit.is_not(None),
-                ),
-            )
-        )
-        .order_by(bill_to_recieve.c.seunumero.desc())
-        .limit(6)
-    )
+    query = '''
+        select nosso_numero,id_terminal,data_venc,valor_conta,status,data_quit,valor_quitado, valor_juros
+        from 79_conta_receber
+        where id_usuario = :cpf and
+        (valor_quitado <> 0.00 or data_quit = null) order by seunumero desc limit 6;
+    '''
 
-    result = await database.fetch_all(query)
+    result = await database.fetch_all(query, values={"cpf": cpf})
 
     billings = []
 
@@ -284,30 +146,17 @@ async def get_terminal_info(user_id: int):
         await database.connect()
         print("Database connection established")
 
-    query = (
-        select(
-            terminal_acesso.c.id_terminal,
-            users.c.nome_usuario,
-            users.c.usuario,
-            users.c.perfil_usuario,
-            tb_perfil.c.perfil,
-            linha_endereco.c.logradouro,
-            linha_endereco.c.bairro,
-            linha_endereco.c.cidade,
-            linha_endereco.c.uf,
-            linha_endereco.c.cep,
-        )
-        .where(
-            (users.c.id_usuario == terminal_acesso.c.id_usuario)
-            & (linha_endereco.c.id_operadora == terminal_acesso.c.id_operadora)
-            & (linha_endereco.c.id_terminal == terminal_acesso.c.id_terminal)
-            & (users.c.perfil_usuario == tb_perfil.c.id_perfil)
-            & (terminal_acesso.c.id_usuario == user_id)
-        )
-        .limit(1)
-    )
+    query = '''
+        select ta.id_terminal,u.nome_usuario,u.usuario,u.perfil_usuario, tp.perfil, le.logradouro,le.bairro,le.cidade,le.uf,le.cep
+        from 79_terminal_acesso ta, usuario u,linha_endereco le, tb_perfil tp
+        where u.id_usuario = ta.id_usuario and
+        le.id_operadora = ta.id_operadora and
+        le.id_terminal = ta.id_terminal and
+        u.perfil_usuario = tp.id_perfil and
+        ta.id_usuario = :cpf limit 1;
+    '''
 
-    result = await database.fetch_one(query)
+    result = await database.fetch_one(query, values={"cpf": user_id})
 
     user_info = UserInfo(
         name=result[1],
@@ -322,28 +171,21 @@ async def get_terminal_info(user_id: int):
 
 
 @app.get("/user-phones/{cpf}")
-async def user_phones(cpf):
+async def user_phones(cpf: str):
     if not database.is_connected:
         await database.connect()
         print("Database connection established")
 
-    query = (
-        select(
-            terminal_acesso.c.id_terminal,
-            tb_operadora.c.id_operadora,
-            tb_operadora.c.operadora
-        )
-        .where(
-            and_(
-                terminal_acesso.c.id_usuario == cpf,
-                terminal_acesso.c.id_operadora == tb_operadora.c.id_operadora,
-                terminal_acesso.c.id_plano_coop != 0
-            )
-        )
-        .order_by(tb_operadora.c.operadora, terminal_acesso.c.id_terminal)
-    )
+    query = '''
+        select ta.id_terminal,o.id_operadora,o.operadora
+        from 79_terminal_acesso ta, operadora o
+        where ta.id_usuario = :cpf and
+        ta.id_operadora = o.id_operadora and
+        (ta.id_plano_coop <> 0)
+        order by operadora,id_terminal
+    '''
 
-    result = await database.fetch_all(query)
+    result = await database.fetch_all(query, values={"cpf": cpf})
 
     user_phones = []
 
@@ -375,9 +217,6 @@ async def internet_use(line: str):
     """
 
     result = await database.fetch_one(query, values={"line": line})
-
-    print(result[0])
-    print(result[1])
 
     table_name = f"79_{result[1]}_detalhe_conta"
 
