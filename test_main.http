@@ -43,3 +43,9 @@ content-type: application/json
 GET http://127.0.0.1:8000/user-phones/86028790672
 Accept: application/json
 content-type: application/json
+
+###
+
+GET http://127.0.0.1:8000/internet-use/(31)99503-4455
+Accept: application/json
+content-type: application/json

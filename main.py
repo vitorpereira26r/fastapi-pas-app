@@ -106,6 +106,23 @@ tb_operadora = Table(
     Column("id_operadora", Integer)
 )
 
+total_terminal_access = Table(
+    "79_total_terminal_acesso",
+    metadata,
+    Column("referencia", String),
+    Column("id_terminal", String),
+    Column("fatura", String),
+)
+
+bill_fature = Table(
+    "79_fatura_conta",
+    metadata,
+    Column("id_operadora", String),
+    Column("referencia", String),
+    Column("id_operadora", String),
+    Column("ind_liberacao", String)
+)
+
 app = FastAPI()
 
 
@@ -338,3 +355,44 @@ async def user_phones(cpf):
     return user_phones
 
 
+@app.get("/internet-use/{line}")
+async def internet_use(line: str):
+    if not database.is_connected:
+        await database.connect()
+        print("Database connection established")
+
+    query = """
+        SELECT tta.referencia, 
+               CONCAT(SUBSTRING(tta.referencia,4,4),SUBSTRING(tta.referencia,1,2)) AS ultima_ref 
+        FROM 79_total_terminal_acesso tta, 79_fatura_conta fa 
+        WHERE tta.id_terminal = :line 
+            AND tta.fatura = fa.fatura 
+            AND fa.id_operadora = 3 
+            AND fa.referencia = tta.referencia 
+            AND fa.ind_liberacao = "S" 
+        ORDER BY 1 DESC 
+        LIMIT 1
+    """
+
+    result = await database.fetch_one(query, values={"line": line})
+
+    print(result[0])
+    print(result[1])
+
+    table_name = f"79_{result[1]}_detalhe_conta"
+
+    query2 = f'''
+        SELECT d.referencia, d.id_operadora, d.id_terminal,
+            SUM(REPLACE(REPLACE(REPLACE(d.num_telefone_destino, ".", ""), "kb", ""), ",", "")/1000) AS quantidade_dur_kb,
+            SUM(d.duracao) AS quantidade_dur
+        FROM {table_name} d
+        WHERE d.referencia = :ref
+            AND d.id_operadora = 3
+            AND d.id_terminal = :line
+            AND (d.classificacao = "DDS" OR d.classificacao = "INTERNET")
+            AND (d.tipo_servico = "USO" OR d.tipo_servico = "DADOS")
+    '''
+
+    result2 = await database.fetch_all(query2, values={"ref": result[0], "line": line})
+
+    return result2
