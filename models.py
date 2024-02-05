@@ -44,3 +44,15 @@ class PhoneLine:
         self.idTerminal = idTerminal
         self.idOperator = idOperator
         self.operator = operator
+
+
+class Service:
+    def __init__(self, description, value):
+        self.description = description
+        self.value = value
+
+
+class PhoneServices:
+    def __init__(self, internetConsume, otherServices):
+        self.internetConsume = internetConsume
+        self.otherServices = otherServices

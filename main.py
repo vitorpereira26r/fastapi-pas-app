@@ -2,7 +2,7 @@ from urllib import response
 
 from fastapi import FastAPI
 from sqlalchemy import MetaData, Table, Column, Integer, String, select, ForeignKey, Float, DateTime, and_, or_
-from models import User, UserInfo, OpenBilling, PaidBilling, PhoneLine
+from models import User, UserInfo, OpenBilling, PaidBilling, PhoneLine, PhoneServices, Service
 import databases
 import os
 
@@ -393,6 +393,25 @@ async def internet_use(line: str):
             AND (d.tipo_servico = "USO" OR d.tipo_servico = "DADOS")
     '''
 
-    result2 = await database.fetch_all(query2, values={"ref": result[0], "line": line})
+    result2 = await database.fetch_one(query2, values={"ref": result[0], "line": line})
 
-    return result2
+    query3 = f'''
+        select d.descricao_servico,sum(d.valor_retarifado) as valor
+        from {table_name} d
+        where d.referencia = :ref and d.id_terminal = :line and
+        d.id_operadora = 3
+        group by d.descricao_servico order by 2 desc
+    '''
+
+    result3 = await database.fetch_all(query3, values={"ref": result[0], "line": line})
+
+    other_services = []
+
+    for service in result3:
+        aux = Service(service[0], service[1])
+
+        other_services.append(aux)
+
+    data = PhoneServices(result2[3], other_services)
+
+    return data
