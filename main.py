@@ -1,5 +1,3 @@
-from urllib import response
-
 from fastapi import FastAPI
 from models import User, UserInfo, OpenBilling, PaidBilling, PhoneLine, PhoneServices, Service
 import databases
@@ -12,7 +10,7 @@ DB_USER = os.environ.get("DB_USER", "aptoubat")
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "River@2304")
 
 '''
-DB2_HOST = os.environ.get("DB2_HOST", "http://mysql.pasvoluntariado.com.br/")
+DB2_HOST = os.environ.get("DB2_HOST", "https://mysql.pasvoluntariado.com.br/")
 DB2_PORT = os.environ.get("DB2_PORT", "3306")
 DB2_NAME = os.environ.get("DB2_NAME", "aptoubat_teleconta")
 DB2_USER = os.environ.get("DB2_USER", "pasvoluntariad")
@@ -168,6 +166,23 @@ async def get_terminal_info(user_id: int):
     )
 
     return user_info
+
+
+@app.get("/user-dependents/{cpf}")
+async def user_dependents(cpf: str):
+    if not database.is_connected:
+        await database.connect()
+        print("Database connection established")
+
+    query = '''
+        select sum(vlrreceber) as recieveTotal
+        from 79_titulos_a_receber
+        where id_titular = :cpf
+    '''
+
+    result = await database.fetch_one(query, values={"cpf": cpf})
+
+    return result
 
 
 @app.get("/user-phones/{cpf}")
