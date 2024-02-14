@@ -9,16 +9,20 @@ DB_NAME = os.environ.get("DB_NAME", "aptoubat_teleconta")
 DB_USER = os.environ.get("DB_USER", "aptoubat")
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "River@2304")
 
-'''
-DB2_HOST = os.environ.get("DB2_HOST", "https://mysql.pasvoluntariado.com.br/")
+
+DB2_HOST = os.environ.get("DB2_HOST", "mysql.pasvoluntariado.com.br")
 DB2_PORT = os.environ.get("DB2_PORT", "3306")
-DB2_NAME = os.environ.get("DB2_NAME", "aptoubat_teleconta")
+DB2_NAME = os.environ.get("DB2_NAME", "pasvoluntariad")
 DB2_USER = os.environ.get("DB2_USER", "pasvoluntariad")
-DB2_PASSWORD = os.environ.get("DB2_PASSWORD", "NjGGOt0lCTl0QzXZ6dSs")'''
+DB2_PASSWORD = os.environ.get("DB2_PASSWORD", "NjGGOt0lCTl0QzXZ6dSs")
 
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
+DATABASE_URL2 = f"mysql+pymysql://{DB2_USER}:{DB2_PASSWORD}@{DB2_HOST}:{DB2_PORT}/{DB2_NAME}"
+
 database = databases.Database(DATABASE_URL)
+
+database2 = databases.Database(DATABASE_URL2)
 
 app = FastAPI()
 
@@ -181,6 +185,25 @@ async def user_dependents(cpf: str):
     '''
 
     result = await database.fetch_one(query, values={"cpf": cpf})
+
+    return result
+
+
+@app.get("/solicitations/{cpf}")
+async def solicitations(cpf: str):
+    if not database2.is_connected:
+        await database2.connect()
+        print("Database connection established")
+
+    query = '''
+        select s.solicitacao_id,s.id_operadora,s.linha_numero,s.solicitacao_tipo,
+        s.solicitacao_data,s.solicitacao_status,o.operadora
+        from solicitacao s, operadora o
+        where s.id_operadora = o.id_operadora and associado_cpf = :cpf
+        order by s.solicitacao_data desc limit 10
+    '''
+
+    result = await database2.fetch_all(query, values={"cpf": cpf})
 
     return result
 

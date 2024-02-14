@@ -55,3 +55,9 @@ content-type: application/json
 GET http://127.0.0.1:8000/user-dependents/07282278000148
 Accept: application/json
 content-type: application/json
+
+###
+
+GET http://127.0.0.1:8000/solicitations/86028790672
+Accept: application/json
+content-type: application/json
