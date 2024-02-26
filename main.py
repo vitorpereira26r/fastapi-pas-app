@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from models import User, UserInfo, OpenBilling, PaidBilling, PhoneLine, PhoneServices, Service
+from models import User, Solicitation, UserInfo, OpenBilling, PaidBilling, PhoneLine, PhoneServices, Service, SolicitationType, \
+    CreateSolicitation
 import databases
 import os
 
@@ -205,7 +206,20 @@ async def solicitations(cpf: str):
 
     result = await database2.fetch_all(query, values={"cpf": cpf})
 
-    return result
+    solicitations = []
+
+    for solicitation in result:
+        id = solicitation[0]
+        idOperator = solicitation[1]
+        line = solicitation[2]
+        solicitationType = solicitation[3]
+        solicitationData = solicitation[4]
+        solicitationStatus = solicitation[5]
+        operator = solicitation[6]
+
+        solicitations.append(Solicitation(id, idOperator, line, solicitationType, solicitationData, solicitationStatus, operator))
+
+    return solicitations
 
 
 @app.get("/user-phones/{cpf}")
@@ -292,3 +306,62 @@ async def internet_use(line: str):
     data = PhoneServices(result2[3], other_services)
 
     return data
+
+
+@app.get("/solicitations-type")
+async def solicitations_type():
+    if not database2.is_connected:
+        await database2.connect()
+        print("Database connection established")
+
+    query = '''
+        select tipodesolicitacao_id,tipodesolicitacao
+        from sistema_tipodesolicitacao
+        where exibe_mobile = "Sim"
+        order by tipodesolicitacao
+    '''
+
+    result = await database2.fetch_all(query)
+
+    types = []
+
+    for type in result:
+        id = type[0]
+        name = type[1]
+
+        types.append(SolicitationType(id, name))
+
+    return types
+
+
+@app.post("/create-solicitation")
+async def create_solicitation(solicitation: CreateSolicitation):
+    if not database2.is_connected:
+        await database2.connect()
+        print("Database connection established")
+
+    query = '''
+        INSERT INTO solicitacao
+        (associado_cpf, linha_numero,id_operadora,
+        solicitacao_cpf_dependente, solicitacao_tipo,
+        solicitacao_data, solicitacao_titulo,
+        solicitacao_descricao, solicitacao_status,
+        solicitacao_fila)
+        VALUES
+        (:cpf, :line, :idOperator, :cpf2,
+        :type, NOW(), :title, :description, "Aberta", "PAS")
+    '''
+
+    values = {
+        "cpf": solicitation.cpf,
+        "line": solicitation.line,
+        "idOperator": solicitation.idOperator,
+        "cpf2": solicitation.cpf2,
+        "type": solicitation.type,
+        "title": solicitation.title,
+        "description": solicitation.description
+    }
+
+    result = await database2.execute(query=query, values=values)
+
+    return {"message": "Solicitação criada com sucesso"}

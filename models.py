@@ -1,3 +1,5 @@
+from pydantic import BaseModel, constr
+
 class User:
     def __init__(self, id, name, nick, username, cpf):
         self.id = id
@@ -56,3 +58,30 @@ class PhoneServices:
     def __init__(self, internetConsume, otherServices):
         self.internetConsume = internetConsume
         self.otherServices = otherServices
+
+
+class SolicitationType:
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
+
+
+class Solicitation:
+    def __init__(self, id, idOperator, line, solicitationType, solicitationDate, solicitationStatus, operator):
+        self.id = id
+        self.idOperator = idOperator
+        self.line = line
+        self.solicitationType = solicitationType
+        self.solicitationDate = solicitationDate
+        self.solicitationStatus = solicitationStatus
+        self.operator = operator
+
+
+class CreateSolicitation(BaseModel):
+    cpf: constr(min_length=11, max_length=11)
+    line: str
+    idOperator: int
+    cpf2: constr(min_length=11, max_length=11)
+    type: int
+    title: str
+    description: str

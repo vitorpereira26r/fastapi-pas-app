@@ -61,3 +61,25 @@ content-type: application/json
 GET http://127.0.0.1:8000/solicitations/86028790672
 Accept: application/json
 content-type: application/json
+
+###
+
+GET http://127.0.0.1:8000/solicitations-type
+Accept: application/json
+content-type: application/json
+
+###
+
+POST http://127.0.0.1:8000/create-solicitation
+Content-Type: application/json
+Accept: application/json
+
+{
+  "cpf": "86028790672",
+  "line": "(31)99503-4455",
+  "idOperator": 3,
+  "cpf2": "86028790672",
+  "type": 205,
+  "title": "Teste teleconta",
+  "description": "Descrição do teste"
+}
