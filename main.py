@@ -19,7 +19,7 @@ DB2_PASSWORD = os.environ.get("DB2_PASSWORD", "NjGGOt0lCTl0QzXZ6dSs")
 
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-DATABASE_URL2 = f"mysql+pymysql://{DB2_USER}:{DB2_PASSWORD}@{DB2_HOST}:{DB2_PORT}/{DB2_NAME}"
+DATABASE_URL2 = f"mysql+pymysql://{DB2_USER}:{DB2_PASSWORD}@{DB2_HOST}:{DB2_PORT}/{DB2_NAME}?charset=utf8mb4"
 
 database = databases.Database(DATABASE_URL)
 
@@ -340,6 +340,15 @@ async def create_solicitation(solicitation: CreateSolicitation):
         await database2.connect()
         print("Database connection established")
 
+    query_solicitation = '''
+        select tipodesolicitacao from sistema_tipodesolicitacao where tipodesolicitacao_id = :id
+    '''
+
+    result1 = await database2.fetch_one(query_solicitation, values={"id": solicitation.type})
+
+    cleaned_number = ''.join((filter(str.isdigit, solicitation.line)))
+    print(cleaned_number)
+
     query = '''
         INSERT INTO solicitacao
         (associado_cpf, linha_numero,id_operadora,
@@ -354,10 +363,10 @@ async def create_solicitation(solicitation: CreateSolicitation):
 
     values = {
         "cpf": solicitation.cpf,
-        "line": solicitation.line,
+        "line": cleaned_number,
         "idOperator": solicitation.idOperator,
         "cpf2": solicitation.cpf2,
-        "type": solicitation.type,
+        "type": result1[0],
         "title": solicitation.title,
         "description": solicitation.description
     }
